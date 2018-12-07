@@ -253,6 +253,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
         datasourceLoading: false,
         datasourceName: datasource.name,
         initialQueries: nextQueries,
+        logsHighlighterExpressions: undefined,
         showingStartPage: Boolean(StartPage),
       },
       () => {
@@ -291,7 +292,11 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
         return qt;
       });
 
-      return { initialQueries: nextQueries, queryTransactions: nextQueryTransactions };
+      return {
+        initialQueries: nextQueries,
+        logsHighlighterExpressions: undefined,
+        queryTransactions: nextQueryTransactions,
+      };
     });
   };
 
@@ -337,6 +342,9 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
           queryTransactions: nextQueryTransactions,
         };
       }, this.onSubmit);
+    } else if (this.state.datasource.getHighlighterExpression && this.modifiedQueries.length === 1) {
+      // Live preview of log search matches. Can only work on single row query for now
+      this.updateLogsHighlights(value);
     }
   };
 
@@ -351,6 +359,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
   };
 
   onClickClear = () => {
+    this.onStopScanning();
     this.modifiedQueries = ensureQueries();
     this.setState(
       prevState => ({
@@ -528,6 +537,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
         return {
           ...results,
           initialQueries: nextQueries,
+          logsHighlighterExpressions: undefined,
           queryTransactions: nextQueryTransactions,
         };
       },
@@ -725,17 +735,29 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
 
     console.error(response);
 
-    let error: string | JSX.Element = response;
+    let error: string | JSX.Element;
     if (response.data) {
-      error = response.data.error;
-      if (response.data.response) {
-        error = (
-          <>
-            <span>{response.data.error}</span>
-            <details>{response.data.response}</details>
-          </>
-        );
+      if (typeof response.data === 'string') {
+        error = response.data;
+      } else if (response.data.error) {
+        error = response.data.error;
+        if (response.data.response) {
+          error = (
+            <>
+              <span>{response.data.error}</span>
+              <details>{response.data.response}</details>
+            </>
+          );
+        }
+      } else {
+        throw new Error('Could not handle error response');
       }
+    } else if (response.message) {
+      error = response.message;
+    } else if (typeof response === 'string') {
+      error = response;
+    } else {
+      error = 'Unknown error during query transaction. Please check JS console logs.';
     }
 
     this.setState(state => {
@@ -765,6 +787,9 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
   async runQueries(resultType: ResultType, queryOptions: any, resultGetter?: any) {
     const queries = [...this.modifiedQueries];
     if (!hasNonEmptyQuery(queries)) {
+      this.setState({
+        queryTransactions: [],
+      });
       return;
     }
     const { datasource } = this.state;
@@ -783,6 +808,17 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
       }
     });
   }
+
+  updateLogsHighlights = _.debounce((value: DataQuery, index: number) => {
+    this.setState(state => {
+      const { datasource } = state;
+      if (datasource.getHighlighterExpression) {
+        const logsHighlighterExpressions = [state.datasource.getHighlighterExpression(value)];
+        return { logsHighlighterExpressions };
+      }
+      return null;
+    });
+  }, 500);
 
   cloneState(): ExploreState {
     // Copy state, but copy queries including modifications
@@ -810,6 +846,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
       graphResult,
       history,
       initialQueries,
+      logsHighlighterExpressions,
       logsResult,
       queryTransactions,
       range,
@@ -954,6 +991,7 @@ export class Explore extends React.PureComponent<ExploreProps, ExploreState> {
                         <Logs
                           data={logsResult}
                           key={logsResult.id}
+                          highlighterExpressions={logsHighlighterExpressions}
                           loading={logsLoading}
                           position={position}
                           onChangeTime={this.onChangeTime}
