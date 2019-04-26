@@ -42,7 +42,7 @@ func (r *SearchRequest) MarshalJSON() ([]byte, error) {
 // SearchResponseHits represents search response hits
 type SearchResponseHits struct {
 	Hits  []map[string]interface{}
-	Total int64
+	Total map[string]interface{}
 }
 
 // SearchResponse represents a search response
@@ -292,7 +292,7 @@ func (a *MetricAggregation) MarshalJSON() ([]byte, error) {
 
 // PipelineAggregation represents a metric aggregation
 type PipelineAggregation struct {
-	BucketPath string
+	BucketPath interface{}
 	Settings   map[string]interface{}
 }
 

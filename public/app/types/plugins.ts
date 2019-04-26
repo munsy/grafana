@@ -1,79 +1,29 @@
-import { ComponentClass } from 'react';
-import { PanelProps, PanelOptionsProps } from './panel';
+import { AngularPanelPlugin, ReactPanelPlugin, PluginMetaInfo, PluginMeta } from '@grafana/ui/src/types';
 
-export interface PluginExports {
-  Datasource?: any;
-  QueryCtrl?: any;
-  ConfigCtrl?: any;
-  AnnotationsQueryCtrl?: any;
-  VariableQueryEditor?: any;
-  ExploreQueryField?: any;
-  ExploreStartPage?: any;
-
-  // Panel plugin
-  PanelCtrl?;
-  PanelComponent?: ComponentClass<PanelProps>;
-  PanelOptionsComponent: ComponentClass<PanelOptionsProps>;
-}
-
-export interface PanelPlugin {
-  id: string;
-  name: string;
-  meta: any;
-  hideFromList: boolean;
-  module: string;
+export interface PanelPlugin extends PluginMeta {
+  hideFromList?: boolean;
   baseUrl: string;
-  info: any;
+  info: PluginMetaInfo;
   sort: number;
-  exports?: PluginExports;
+  angularPlugin: AngularPanelPlugin | null;
+  reactPlugin: ReactPanelPlugin | null;
+  hasBeenImported?: boolean;
+  dataFormats: PanelDataFormat[];
 }
 
-export interface PluginMeta {
-  id: string;
-  name: string;
-  info: PluginMetaInfo;
-  includes: PluginInclude[];
-
-  // Datasource-specific
-  metrics?: boolean;
-  logs?: boolean;
-  explore?: boolean;
-  annotations?: boolean;
+export enum PanelDataFormat {
+  Table = 'table',
+  TimeSeries = 'time_series',
 }
 
-export interface PluginInclude {
-  type: string;
-  name: string;
-  path: string;
-}
-
-export interface PluginMetaInfo {
-  author: {
-    name: string;
-    url: string;
-  };
-  description: string;
-  links: string[];
-  logos: {
-    large: string;
-    small: string;
-  };
-  screenshots: string;
-  updated: string;
-  version: string;
-}
-
-export interface Plugin {
+/**
+ * Values we don't want in the public API
+ */
+export interface Plugin extends PluginMeta {
   defaultNavUrl: string;
-  enabled: boolean;
   hasUpdate: boolean;
-  id: string;
-  info: PluginMetaInfo;
   latestVersion: string;
-  name: string;
   pinned: boolean;
-  state: string;
-  type: string;
 }
 
 export interface PluginDashboard {
@@ -98,6 +48,7 @@ export interface PluginsState {
   layoutMode: string;
   hasFetched: boolean;
   dashboards: PluginDashboard[];
+  isLoadingPluginDashboards: boolean;
 }
 
 export interface VariableQueryProps {
